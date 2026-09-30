@@ -22,7 +22,12 @@ STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 CLI = shutil.which("kdeconnect-cli")
 
 NUMBER_RE = re.compile(r"^\+?\d{6,15}$")
-DEVICE_LINE_RE = re.compile(r"^-\s+(?P<name>.*?):\s+(?P<id>\S+)\s+on\s+\S+\s+via\s+\S+\s+\((?P<state>.*)\)$")
+# Tolère les variantes de format : "- Nom: id (état)" ou "- Nom: id on IP via LAN (état)".
+DEVICE_LINE_RE = re.compile(r"^-\s+(?P<name>.+?):\s+(?P<id>[\w{}-]+)(?P<rest>.*)$")
+STATE_RE = re.compile(r"\(([^()]*)\)\s*$")
+
+# kdeconnect-cli traduit sa sortie : on force l'anglais pour lire l'état.
+CLI_ENV = dict(os.environ, LC_ALL="C.UTF-8", LANG="C.UTF-8", LANGUAGE="en")
 
 MAX_MESSAGE_LEN = 2000
 MAX_RECIPIENTS = 1000
@@ -32,26 +37,61 @@ JOBS = {}
 JOBS_LOCK = threading.Lock()
 
 
+def _run_cli(*args):
+    return subprocess.run([CLI, *args], capture_output=True, text=True, timeout=15, env=CLI_ENV)
+
+
+def _parse_id_name(output):
+    """Parse la sortie de --id-name-only : "<id> <nom>" par ligne."""
+    result = {}
+    for line in output.splitlines():
+        parts = line.strip().split(" ", 1)
+        if parts and parts[0]:
+            result[parts[0]] = parts[1] if len(parts) > 1 else parts[0]
+    return result
+
+
+def _has_state(text, yes, no):
+    return any(w in text for w in yes) and not any(w in text for w in no)
+
+
 def list_devices():
     if not CLI:
         raise RuntimeError("kdeconnect-cli introuvable dans le PATH")
-    proc = subprocess.run([CLI, "-l"], capture_output=True, text=True, timeout=15)
-    devices = []
+
+    proc = _run_cli("-l")
+    if proc.returncode != 0 and not proc.stdout.strip():
+        detail = (proc.stderr or "").strip()[:300] or f"code {proc.returncode}"
+        raise RuntimeError(f"kdeconnect-cli -l a échoué ({detail}). Le daemon kdeconnectd tourne-t-il dans ta session ?")
+
+    devices = {}
     for line in proc.stdout.splitlines():
         match = DEVICE_LINE_RE.match(line.strip())
         if not match:
             continue
-        state = match.group("state")
-        devices.append(
-            {
-                "id": match.group("id"),
-                "name": match.group("name"),
-                "paired": "paired" in state,
-                "reachable": "reachable" in state,
-                "state": state,
-            }
-        )
-    return devices
+        state_match = STATE_RE.search(match.group("rest"))
+        state = state_match.group(1) if state_match else ""
+        low = state.lower()
+        devices[match.group("id")] = {
+            "id": match.group("id"),
+            "name": match.group("name"),
+            "paired": _has_state(low, ("paired", "associé", "appairé"), ("unpaired", "non associé", "non appairé")),
+            "reachable": _has_state(low, ("reachable", "joignable", "accessible"), ("unreachable", "injoignable", "non joignable", "inaccessible")),
+            "state": state,
+        }
+
+    # Source indépendante de la langue et du format : appareils appairés ET joignables.
+    try:
+        available = _parse_id_name(_run_cli("-a", "--id-name-only").stdout)
+    except Exception:
+        available = {}
+    for dev_id, name in available.items():
+        dev = devices.setdefault(dev_id, {"id": dev_id, "name": name, "state": ""})
+        dev["paired"] = True
+        dev["reachable"] = True
+        dev["state"] = dev["state"] or "paired and reachable"
+
+    return list(devices.values())
 
 
 def normalize_numbers(raw_numbers, default_prefix=""):
