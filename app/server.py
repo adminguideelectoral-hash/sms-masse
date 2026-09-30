@@ -51,6 +51,10 @@ def _parse_id_name(output):
     return result
 
 
+def _has_state(text, yes, no):
+    return any(w in text for w in yes) and not any(w in text for w in no)
+
+
 def list_devices():
     if not CLI:
         raise RuntimeError("kdeconnect-cli introuvable dans le PATH")
@@ -71,8 +75,8 @@ def list_devices():
         devices[match.group("id")] = {
             "id": match.group("id"),
             "name": match.group("name"),
-            "paired": "paired" in low and "unpaired" not in low,
-            "reachable": "reachable" in low and "unreachable" not in low,
+            "paired": _has_state(low, ("paired", "associé", "appairé"), ("unpaired", "non associé", "non appairé")),
+            "reachable": _has_state(low, ("reachable", "joignable", "accessible"), ("unreachable", "injoignable", "non joignable", "inaccessible")),
             "state": state,
         }
 
