@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Envoi SMS — KDE Connect</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main>
+
+  <header>
+    <h1>Envoi SMS groupé</h1>
+    <p class="sub">Diffusion via KDE Connect · depuis ton propre numéro</p>
+  </header>
+
+  <section class="card">
+    <h2>1. Appareil</h2>
+    <div class="row">
+      <select id="device">
+        <option value="">Chargement…</option>
+      </select>
+      <button type="button" id="refresh" class="ghost" title="Recharger la liste">↻</button>
+    </div>
+    <p id="device-hint" class="hint"></p>
+  </section>
+
+  <section class="card">
+    <h2>2. Message</h2>
+    <div class="tabs" role="tablist">
+      <button type="button" class="tab active" data-tab="text" role="tab">Texte</button>
+      <button type="button" class="tab" data-tab="file" role="tab">Fichier</button>
+    </div>
+
+    <div id="pane-text" class="pane">
+      <textarea id="message-text" rows="5" placeholder="Ton message…"></textarea>
+    </div>
+
+    <div id="pane-file" class="pane hidden">
+      <input type="file" id="message-file" accept=".txt,.md,text/plain">
+      <p class="hint">Le contenu complet du fichier sera utilisé comme message.</p>
+    </div>
+
+    <div class="meta">
+      <span id="msg-length">0 caractère</span>
+      <span id="msg-segments" class="pill">0 SMS / destinataire</span>
+    </div>
+    <p id="msg-warning" class="warn hidden"></p>
+  </section>
+
+  <section class="card">
+    <h2>3. Destinataires</h2>
+    <label class="file">
+      <input type="file" id="numbers-file" accept=".csv,.txt,text/csv,text/plain">
+      <span id="numbers-label">Choisir un fichier CSV…</span>
+    </label>
+    <div class="options">
+      <label class="inline">
+        <span>Indicatif par défaut</span>
+        <input type="text" id="prefix" value="+1" size="6" inputmode="tel" autocomplete="off">
+      </label>
+    </div>
+    <p class="hint">
+      Un numéro sans indicatif reçoit celui ci-dessus (ex. <code>5145551234</code> →
+      <code>+15145551234</code>). Un numéro commençant par <code>+</code> est conservé
+      tel quel (ex. <code>+33612345678</code>). La première ligne est ignorée si c'est un en-tête.
+    </p>
+    <textarea id="numbers-text" rows="5" placeholder="…ou colle directement des numéros, un par ligne"></textarea>
+    <p id="numbers-hint" class="hint">Aucun destinataire.</p>
+  </section>
+
+  <section class="card">
+    <h2>4. Aperçu</h2>
+    <div id="preview-empty" class="empty">Aucun destinataire valide pour l'instant.</div>
+    <ul id="preview" class="preview"></ul>
+    <p id="rejected" class="warn hidden"></p>
+  </section>
+
+  <section class="card">
+    <h2>5. Envoi</h2>
+    <div class="options">
+      <label class="inline">
+        <span>Délai entre envois</span>
+        <input type="number" id="delay" value="1" min="0" max="60" step="0.5"> s
+      </label>
+      <label class="inline checkbox">
+        <input type="checkbox" id="dry-run" checked>
+        <span>Simulation (aucun SMS réel)</span>
+      </label>
+    </div>
+
+    <div id="cost" class="cost"></div>
+
+    <div class="actions">
+      <button type="button" id="send" class="primary" disabled>Lancer l'envoi</button>
+      <button type="button" id="cancel" class="ghost hidden">Arrêter</button>
+    </div>
+
+    <div id="progress" class="hidden">
+      <div class="bar"><div id="bar-fill"></div></div>
+      <p id="progress-text"></p>
+    </div>
+
+    <ul id="results" class="results"></ul>
+    <p id="send-error" class="warn hidden"></p>
+  </section>
+
+</main>
+<script src="app.js"></script>
+</body>
+</html>
