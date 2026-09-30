@@ -177,7 +177,10 @@ function loadDevices() {
         opt.value = "";
         opt.textContent = "Aucun appareil appairé";
         select.appendChild(opt);
-        hint.textContent = "Appaire ton téléphone via l'interface KDE Connect (voir GUIDE.md §5).";
+        const others = data.devices.map((d) => `${d.name} (${d.state || "état inconnu"})`);
+        hint.textContent = others.length
+          ? `Détecté(s) mais pas appairé(s) et joignable(s) : ${others.join(", ")}. Accepte l'appairage sur le téléphone et vérifie le Wi-Fi.`
+          : "Aucun appareil détecté. Vérifie que KDE Connect est ouvert sur le téléphone, sur le même Wi-Fi, puis appaire-le (voir GUIDE.md §5).";
       } else {
         paired.forEach((d) => {
           const opt = document.createElement("option");
