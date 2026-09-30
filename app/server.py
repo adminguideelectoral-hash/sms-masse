@@ -244,7 +244,7 @@ class Handler(BaseHTTPRequestHandler):
         default_prefix = str(payload.get("default_prefix") or "+1")
         dry_run = bool(payload.get("dry_run"))
         try:
-            delay = float(payload.get("delay", 1))
+            delay = float(payload.get("delay", 2.5))
         except (TypeError, ValueError):
             delay = 1.0
         delay = max(0.0, min(delay, 60.0))
